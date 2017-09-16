@@ -15,6 +15,8 @@
           <option value="aaf.utils.AttachView.idaDebugPort" />
           <option value="aaf.utils.AttachView.debug" />
           <option value="aaf.utils.AttachView.names" />
+          <option value="aaf.idadir" />
+          <option value="idc.idadir" />
         </list>
       </option>
     </inspection_tool>

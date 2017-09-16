@@ -23,8 +23,12 @@ class AndroidAttacher(object):
         self.adb = wrapper
         self.utilsJar = utilsJar
         self.config_file = config_file
-        import idaapi
-        self.bindir = os.path.abspath(idaapi.get_idcpath() + "/../dbgsrv")
+        if hasattr(idc, "idadir"):
+            # ida 7.0
+            self.bindir = os.path.abspath(idc.idadir() + "/dbgsrv")
+        else:
+            import idaapi
+            self.bindir = os.path.abspath(idaapi.get_idcpath() + "/../dbgsrv")
 
     def load_config(self):
         try:
@@ -175,32 +179,39 @@ class AndroidAttacher(object):
             # we have to find the port used by android_server from stdout
             # while this complicates things a little, it allows us to
             # have multiple android_servers running
+
+            # Listening on port #23946...
+            # Listening on 0.0.0.0:23946...
             out = []
             line = ' '
             while line:
                 try:
                     line = proc.stdout.readline()
-                    # print "read line: ", line
-                    words = line.split()
+                    # words = line.split()
                     # print "line:", line, "words:", words
                     out.append(line.rstrip())
                     if 'android_server terminated by' in line:
                         break
-                    # kind of hacky, assume the port number comes after 'port'
-                    if 'port' not in words:
+                    if 'Listening' not in line:
                         continue
-                    if words.index('port') + 1 == len(words):
+
+                    if '#' in line:
+                        start_index = line.index("#")
+                    elif ':' in line:
+                        start_index = line.index(":")
+                    else:
+                        print "parse line failed: ", line
                         continue
-                    port = words[words.index('port') + 1]
-                    idx = port.index("...")
-                    port = port[1:idx]
+                    end_index = line.index("...")
+                    port = line[start_index + 1: end_index]
 
                     if not port.isdigit():
+                        print "parse failed: port=", port, ", line=", line
                         continue
                     need_watchdog = False
                     return (proc, port, out)
-                except:
-                    pass
+                except BaseException, e:
+                    print e
             # not found, error?
             need_watchdog = False
             return (None, None, out)
