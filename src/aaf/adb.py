@@ -20,6 +20,23 @@ def checkAdb(path):
         return False
 
 
+def hasJdb():
+    kw = { "stdin": subprocess.PIPE, "stdout": subprocess.PIPE };
+    kw = utils.processWindows(**kw);
+    cmd = ["jdb", "-version"];
+    try:
+        p = subprocess.Popen(cmd, **kw);
+        out = p.communicate()[0];
+        if p.returncode != 0:
+            return False;
+        if utils.isWindows():
+            return "version" in out or "版本" in out.decode('gbk').encode("utf8");
+        else:
+            return "version" in out or "版本" in out
+    except:
+        return False;
+
+
 class Device(object):
     def __init__(self, dev, pkgs):
         self.dev = dev
