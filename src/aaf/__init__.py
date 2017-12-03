@@ -12,7 +12,7 @@ import idc
 
 from aaf import utils
 from aaf.utils import fn_timer
-
+from aaf import DBGHook
 
 class AndroidAttacher(object):
     def __init__(self, wrapper, utilsJar, config_file):
@@ -97,6 +97,10 @@ class AndroidAttacher(object):
         if not pid:
             raise StandardError("Error attach %s/%s." % (self.packageName, self.launchActivity))
         self.attach_app(pid)
+        if debug:
+            self.adb.forward('tcp:8700' , 'jdwp:' + str(pid))
+            self.dbg_hook=DBGHook.DBG_Hook()
+            self.dbg_hook.hook()
 
     @fn_timer
     def attach_app(self, pid):
