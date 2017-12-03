@@ -40,12 +40,12 @@ class AdbWrapper(object):
         self.adb_path = None
         self.adb_device = ""
 
-        if adb_path and checkAdb(adb_path):
-            self.adb_path = adb_path
-            return
-
         if checkAdb("adb"):
             self.adb_path = "adb"
+            return
+
+        if adb_path and checkAdb(adb_path):
+            self.adb_path = adb_path
             return
 
         raise StandardError("Can't execute adb: " + str(adb_path))

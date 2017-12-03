@@ -23,6 +23,7 @@ class AndroidAttacher(object):
         self.adb = wrapper
         self.utilsJar = utilsJar
         self.config_file = config_file
+        self.debugProcessName = None
         if hasattr(idc, "idadir"):
             # ida 7.0
             self.bindir = os.path.abspath(idc.idadir() + "/dbgsrv")
@@ -51,12 +52,35 @@ class AndroidAttacher(object):
 
     @fn_timer
     def _getPid(self):
+        names = []
+        pids = {}
         ps = self.adb.call(['shell', 'ps']).splitlines()
         for x in ps:
             xs = x.split()
-            if self.packageName in xs and ('S' in xs or 'T' in xs):
-                g = (col for col in xs if col.isdigit())
-                return int(next(g))
+            if 'S' in xs or 'T' in xs:
+                for t in xs:
+                    if t.startswith(self.packageName):
+                        g = (col for col in xs if col.isdigit())
+                        pids[t] = int(next(g))
+                        names.append(t)
+                        break
+        if len(names) == 0:
+            return None
+        if len(names) == 1:
+            process = names[0]
+            return pids[process], process
+
+        if self.debugProcessName is not None and self.debugProcessName in names:
+            return pids[self.debugProcessName], self.debugProcessName
+
+        process = utils.ChooserForm("Choose process", names).choose()
+        if process not in names:
+            return None
+
+        if self.debugProcessName != process:
+            self.debugProcessName = process
+
+        return pids[process], process
 
     @fn_timer
     def _launch(self, debug):
@@ -84,29 +108,29 @@ class AndroidAttacher(object):
 
     @fn_timer
     def _attach(self, debug):
-        pid = self._getPid()
+        pid, process = self._getPid()
         if not pid:
             self._launch(debug)
 
             for _ in range(10):
-                pid = self._getPid()
+                pid, process = self._getPid()
                 if pid:
                     break
                 time.sleep(0.5)
 
         if not pid:
             raise StandardError("Error attach %s/%s." % (self.packageName, self.launchActivity))
-        self.attach_app(pid)
+        self.attach_app(pid, process)
 
     @fn_timer
-    def attach_app(self, pid):
+    def attach_app(self, pid, process):
         idc.LoadDebugger("armlinux", 1)
         idc.SetRemoteDebugger("localhost", "", self.port)
         status = idc.AttachProcess(pid, -1)
         if status == 1:
-            print 'Attaching to pid %s... Done' % pid
+            print 'Attaching to process %s[%s]... Done' % (process, pid)
         else:
-            print 'Attaching to pid %s... Failed: %s' % (pid, status)
+            print 'Attaching to process %s[%s]... Failed: %s' % (process, pid, status)
 
     def _chooseLaunchActivity(self, packageName):
         '''
@@ -281,7 +305,7 @@ class AndroidAttacher(object):
                 print "Already in debug mode."
                 return
 
-            is_running = self.android_server and self.android_server.poll() is None
+            is_running = self.android_server is not None and self.android_server.poll() is None
             if self.device is None or not is_running:
                 self._chooseDevice()
 

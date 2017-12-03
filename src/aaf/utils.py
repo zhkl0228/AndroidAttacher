@@ -12,7 +12,7 @@ CALC_EXEC_TIME = False
 
 
 class ChooserForm(Form):
-    def __init__(self, title, values, idx=0):
+    def __init__(self, title, values):
         Form.__init__(self, ("STARTITEM 0\n"
                              "BUTTON YES* OK\n"
                              "BUTTON CANCEL Cancel\n" + title + "\n"
