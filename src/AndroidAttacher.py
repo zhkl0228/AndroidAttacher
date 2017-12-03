@@ -37,6 +37,7 @@ class android_attacher_plugin(idaapi.plugin_t):
 
     def __init__(self):
         self.androidAttacher = None
+        self.attaching = False
         pass
 
     def init(self):
@@ -60,8 +61,15 @@ class android_attacher_plugin(idaapi.plugin_t):
         pass
 
     def run(self, arg=0):
-        if self.androidAttacher is not None:
-            self.androidAttacher.attach(arg)
+        if self.attaching:
+            return
+
+        try:
+            if self.androidAttacher is not None:
+                self.attaching = True
+                self.androidAttacher.attach(arg)
+        finally:
+            self.attaching = False
 
 
 def PLUGIN_ENTRY():

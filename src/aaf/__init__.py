@@ -51,31 +51,32 @@ class AndroidAttacher(object):
         print 'Using device %s' % self.device
 
     @fn_timer
-    def _getPid(self):
+    def _getPid(self, with_service=True):
         names = []
         pids = {}
         ps = self.adb.call(['shell', 'ps']).splitlines()
         for x in ps:
             xs = x.split()
             if 'S' in xs or 'T' in xs:
-                for t in xs:
-                    if t.startswith(self.packageName):
+                for token in xs:
+                    if (with_service and token.startswith(self.packageName)) or self.packageName == token:
                         g = (col for col in xs if col.isdigit())
-                        pids[t] = int(next(g))
-                        names.append(t)
+                        pids[token] = int(next(g))
+                        names.append(token)
                         break
+
+        # print "getPid %s, with_service=%s" % (names, with_service)
         if len(names) == 0:
-            return None
-        if len(names) == 1:
-            process = names[0]
-            return pids[process], process
+            return None, None
+        if len(names) == 1 and names[0] == self.packageName:
+            return pids[self.packageName], self.packageName
 
         if self.debugProcessName is not None and self.debugProcessName in names:
             return pids[self.debugProcessName], self.debugProcessName
 
         process = utils.ChooserForm("Choose process", names).choose()
         if process not in names:
-            return None
+            return None, None
 
         if self.debugProcessName != process:
             self.debugProcessName = process
@@ -102,25 +103,26 @@ class AndroidAttacher(object):
 
         for _ in range(50):
             time.sleep(0.2)
-            if self._getPid():
+            pid, _ = self._getPid(with_service=False)
+            if pid is not None:
                 break
         print "Done in %s seconds" % (time.time() - start)
 
     @fn_timer
     def _attach(self, debug):
-        pid, process = self._getPid()
-        if not pid:
+        pid, process = self._getPid(with_service=True)
+        if pid:
+            self.attach_app(pid, process)
+            return
+
+        for _ in range(10):
             self._launch(debug)
+            pid, process = self._getPid(with_service=True)
+            if pid:
+                self.attach_app(pid, process)
+                return
 
-            for _ in range(10):
-                pid, process = self._getPid()
-                if pid:
-                    break
-                time.sleep(0.5)
-
-        if not pid:
-            raise StandardError("Error attach %s/%s." % (self.packageName, self.launchActivity))
-        self.attach_app(pid, process)
+        raise StandardError("Error attach %s/%s." % (self.packageName, self.launchActivity))
 
     @fn_timer
     def attach_app(self, pid, process):
@@ -128,9 +130,9 @@ class AndroidAttacher(object):
         idc.SetRemoteDebugger("localhost", "", self.port)
         status = idc.AttachProcess(pid, -1)
         if status == 1:
-            print 'Attaching to process %s[%s]... Done' % (process, pid)
+            print 'Attaching process %s[%s]... Done' % (process, pid)
         else:
-            print 'Attaching to process %s[%s]... Failed: %s' % (process, pid, status)
+            print 'Attaching process %s[%s]... Failed: %s' % (process, pid, status)
 
     def _chooseLaunchActivity(self, packageName):
         '''
@@ -194,7 +196,7 @@ class AndroidAttacher(object):
             need_watchdog = True
 
             def watchdog():
-                time.sleep(180)
+                time.sleep(180) # 3 minutes
                 if need_watchdog and proc.poll() is None:  # still running
                     proc.terminate()
 
@@ -217,6 +219,7 @@ class AndroidAttacher(object):
                     if 'android_server terminated by' in line:
                         break
                     if 'Listening' not in line:
+                        time.sleep(0.1)
                         continue
 
                     if '#' in line:
