@@ -12,7 +12,7 @@ import idc
 
 from aaf import utils
 from aaf.utils import fn_timer
-
+from aaf import DBGHook
 
 class AndroidAttacher(object):
     def __init__(self, wrapper, utilsJar, config_file):
@@ -98,36 +98,10 @@ class AndroidAttacher(object):
             raise StandardError("Error attach %s/%s." % (self.packageName, self.launchActivity))
         self.attach_app(pid)
         if debug:
-           self._resume_jdb(debug,pid)
+            self.adb.forward('tcp:8700' , 'jdwp:' + str(pid))
+            self.dbg_hook=DBGHook.DBG_Hook()
+            self.dbg_hook.hook()
 
-    @fn_timer
-    def _resume_jdb(self,debug,pid):
-        # if is debug mode,use the jdb to resume the program
-        self.adb.forward('tcp:8700' , 'jdwp:' + str(pid));
-        if adb.hasJdb():
-           path="jdb";
-        else:
-            env=os.environ;
-            java_path=env.get('JAVA_HOME');
-            if java_path is None:    
-                java_path=idaapi.askstr(idaapi.HIST_IDENT,"","can't find JAVA_HOME,please specify the JAVA_HOME or resume the program manually")
-            path=os.path.join(java_path,"bin","jdb.exe");
-        if not os.path.exists(path):
-            return
-        if utils.isWindows():
-            startupinfo = subprocess.STARTUPINFO();
-            startupinfo.dwFlags = subprocess.CREATE_NEW_CONSOLE | subprocess.STARTF_USESHOWWINDOW;
-            startupinfo.wShowWindow = subprocess.SW_HIDE;
-            proc=subprocess.Popen([path,'-connect','com.sun.jdi.SocketAttach:hostname=127.0.0.1,port=8700'], stderr=subprocess.PIPE,startupinfo=startupinfo);
-        else:
-            proc=subprocess.Popen([path,'-connect','com.sun.jdi.SocketAttach:hostname=127.0.0.1,port=8700'], stderr=subprocess.PIPE);
-        need_watchdog = True
-        def watchdog():
-            time.sleep(3)
-            if need_watchdog and proc.poll() is None: # still running
-                proc.terminate()
-        (threading.Thread(target=watchdog)).start()
-      
     @fn_timer
     def attach_app(self, pid):
         idc.LoadDebugger("armlinux", 1)
