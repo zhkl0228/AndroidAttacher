@@ -3,7 +3,7 @@
 
 import os
 
-ADB_PATH = "/Users/zhkl0228/Library/Android/sdk/platform-tools/adb"
+ADB_PATH = "~/Library/Android/sdk/platform-tools/adb"
 
 
 def get_plugin_home():

@@ -48,6 +48,20 @@ class AdbWrapper(object):
             self.adb_path = adb_path
             return
 
+        try:
+            import psutil
+            for p in psutil.process_iter():
+                try:
+                    if "tcp:5037" in p.cmdline():
+                        adb_path = p.exe()
+                        if checkAdb(adb_path):
+                            self.adb_path = adb_path
+                            return
+                except:
+                    pass
+        except:
+            pass
+
         raise StandardError("Can't execute adb: " + str(adb_path))
 
     def call(self, args, **kw):
