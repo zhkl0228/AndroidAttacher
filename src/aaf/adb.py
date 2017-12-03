@@ -88,38 +88,38 @@ class AdbWrapper(object):
 
     def chooseDevice(self, cache):
         # identify device
-        devs = self.getDevices()
+        devices = self.getDevices()
 
-        if not devs:
+        if not devices:
             raise StandardError(' ADB: no device')
 
-        dev = self.adb_device
-        if dev and dev not in devs:
-            print 'Device (%s) is not connected' % dev
+        device = self.adb_device
+        if device and device not in devices:
+            print 'Device (%s) is not connected' % device
         # use only device
-        if len(devs) == 1:
-            dev = devs[0]
+        if len(devices) == 1:
+            device = devices[0]
         # otherwise, let user decide
-        while not dev in devs:
-            dev = utils.ChooserForm("Choose device", devs).choose()
-        if self.adb_device != dev:
-            self.adb_device = dev
+        while not device in devices:
+            device = utils.ChooserForm("Choose device", devices).choose()
+        if self.adb_device != device:
+            self.adb_device = device
 
-        if cache and dev == cache.dev:
+        if cache and device == cache.dev:
             return cache
-        return Device(dev, self._getPackageApk())
+        return Device(device, self._getPackageApk())
 
     def _getPackageApk(self):
         ret = {}
-        devpkgs = self.call(['shell', 'pm', 'list', 'packages', '-f', "-3"])
-        if not devpkgs.strip():
+        devicePackages = self.call(['shell', 'pm', 'list', 'packages', '-f', "-3"])
+        if not devicePackages.strip():
             return ret
-        for devpkg in (l.strip() for l in devpkgs.splitlines()):
-            if not devpkg:
+        for devicePackage in (l.strip() for l in devicePackages.splitlines()):
+            if not devicePackage:
                 continue
-            # devpkg has the format 'package:/data/app/pkg.apk=pkg'
-            devpkg = devpkg.partition('=')
-            ret[devpkg[2]] = devpkg[0].partition(':')[2]
+            # devicePackage has the format 'package:/data/app/pkg.apk=pkg'
+            devicePackage = devicePackage.partition('=')
+            ret[devicePackage[2]] = devicePackage[0].partition(':')[2]
         return ret
 
     def pull(self, src, dest):

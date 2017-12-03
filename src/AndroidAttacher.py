@@ -3,7 +3,7 @@
 
 import os
 
-ADB_PATH = "/Users/zhkl0228/Library/Android/sdk//platform-tools/adb"
+ADB_PATH = "/Users/zhkl0228/Library/Android/sdk/platform-tools/adb"
 
 
 def get_plugin_home():
@@ -35,6 +35,10 @@ class android_attacher_plugin(idaapi.plugin_t):
     wanted_hotkey = "Alt-F8"
     help = wanted_name + ": Debugger/" + ACTION_NAME
 
+    def __init__(self):
+        self.androidAttacher = None
+        pass
+
     def init(self):
         architecture = utils.getIdaArchitecture()
         if architecture != "arm":
@@ -56,7 +60,8 @@ class android_attacher_plugin(idaapi.plugin_t):
         pass
 
     def run(self, arg=0):
-        self.androidAttacher.attach()
+        if self.androidAttacher is not None:
+            self.androidAttacher.attach(arg)
 
 
 def PLUGIN_ENTRY():

@@ -110,10 +110,10 @@ class AndroidAttacher(object):
 
     def _chooseLaunchActivity(self, packageName):
         '''
-    packageApk = self.device.getApkPath(packageName)
-    if not packageApk:
-      raise StandardError("Error find package apk: %s." % packageName)
-    '''
+        packageApk = self.device.getApkPath(packageName)
+        if not packageApk:
+          raise StandardError("Error find package apk: %s." % packageName)
+        '''
 
         aaf_utils = "/data/local/tmp/aaf_utils.jar"
         # print "Pushing utils.jar to device: %s" % aaf_utils
@@ -132,11 +132,11 @@ class AndroidAttacher(object):
         return utils.ChooserForm("Choose activity", activities).choose()
 
     @fn_timer
-    def _startAndroidServer(self, skipShell=False, redirectOut=False):
+    def _startAndroidServer(self, idaDebugPort):
         global androidServerSuOut
         global port
 
-        ida_port = '-p' + str(self.android_server_port)
+        ida_port = '-p' + str(idaDebugPort)
         ps = self.adb.call(['shell', 'ps']).splitlines()
         for proc in [x.split() for x in ps if 'android_server' in x]:
             pid = next((col for col in proc if col.isdigit()))
@@ -274,7 +274,7 @@ class AndroidAttacher(object):
         print 'Done'
 
     @fn_timer
-    def attach(self):
+    def attach(self, arg):
         try:
             import idaapi
             if idaapi.is_debugger_on():
@@ -303,18 +303,17 @@ class AndroidAttacher(object):
                 self.launchActivity = self._chooseLaunchActivity(packageName)
 
             self.packageName = packageName
-            self.android_server_port = idaDebugPort
 
             if not self.launchActivity:
                 return
 
-            print "Request attach:", packageName
+            print "Request attach: %s with arg %s" % (packageName, arg)
 
             if is_running:
                 self._attach(debug)
                 return
 
-            self._startAndroidServer()
+            self._startAndroidServer(idaDebugPort)
             self._attach(debug)
         except BaseException, e:
             if self.android_server and self.android_server.poll() is None:
