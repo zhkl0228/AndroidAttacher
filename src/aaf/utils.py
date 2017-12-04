@@ -12,20 +12,21 @@ CALC_EXEC_TIME = False
 
 
 class ChooserForm(Form):
-    def __init__(self, title, values):
+    def __init__(self, title, labels, values=None, cancel="Cancel"):
         Form.__init__(self, ("STARTITEM 0\n"
                              "BUTTON YES* OK\n"
-                             "BUTTON CANCEL Cancel\n" + title + "\n"
+                             "BUTTON CANCEL " + cancel + "\n" + title + "\n"
                                                                 "\n"
                                                                 "<Please select :{values}>\n"),
-                      {"values": Form.DropdownListControl(items=values, readonly=True, selval=0)})
-        self.cvs = values
+                      {"values": Form.DropdownListControl(items=labels, readonly=True, selval=0)})
+        self.labels = labels
+        self.cvs = values if values is not None else labels
 
     def choose(self):
         self.Compile()
         if self.Execute() != 1:
-            return
-        return self.cvs[self.values.value]
+            return None, None
+        return self.cvs[self.values.value], self.labels[self.values.value]
 
     def OnButtonNop(self, code=0):
         pass

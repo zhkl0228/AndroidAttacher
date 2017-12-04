@@ -21,12 +21,13 @@ def checkAdb(path):
 
 
 class Device(object):
-    def __init__(self, dev, pkgs):
-        self.dev = dev
-        self.pkgs = pkgs
+    def __init__(self, serial, model):
+        self.serial = serial
+        self.model = model
+        self.pkgs = None
 
     def __str__(self):
-        return self.dev
+        return self.model
 
     def getApkPath(self, packageName):
         return self.pkgs[packageName]
@@ -34,11 +35,14 @@ class Device(object):
     def getPackageNames(self):
         return self.pkgs.keys()
 
+    def setPackages(self, pkgs):
+        self.pkgs = pkgs
+
 
 class AdbWrapper(object):
     def __init__(self, adb_path):
         self.adb_path = None
-        self.adb_device = ""
+        self.adb_device = None
 
         if checkAdb("adb"):
             self.adb_path = "adb"
@@ -68,9 +72,9 @@ class AdbWrapper(object):
         kw = utils.processWindows(**kw)
 
         cmd = [self.adb_path]
-        dev = self.adb_device
-        if dev:
-            cmd.extend(["-s", dev])
+        device = self.adb_device
+        if device:
+            cmd.extend(["-s", device.serial])
         cmd.extend(args)
         async = False
         if 'async' in kw:
@@ -92,13 +96,19 @@ class AdbWrapper(object):
         return out
 
     def getDevices(self):
-        devs = []
-        for sdev in self.call(['devices']).splitlines():
-            devparts = sdev.partition('\t')
-            if devparts[2] != 'device':
-                continue
-            devs.append(devparts[0].strip())
-        return devs
+        devices = {}
+        for line in self.call(['devices', '-l']).splitlines():
+            try:
+                import re
+                pattern = re.compile(r"(\S+)\s+device.+model:(.+)\s+device")
+                parts = pattern.findall(line)
+                if len(parts) != 1:
+                    continue
+                serial, model = parts[0]
+                devices[serial] = serial + '[' + model + ']'
+            except:
+                pass
+        return devices
 
     def chooseDevice(self, cache):
         # identify device
@@ -107,21 +117,23 @@ class AdbWrapper(object):
         if not devices:
             raise StandardError(' ADB: no device')
 
-        device = self.adb_device
-        if device and device not in devices:
-            print 'Device (%s) is not connected' % device
+        if self.adb_device is not None and self.adb_device.serial not in devices:
+            print 'Device (%s) is not connected' % self.adb_device
+
+        serial = None
         # use only device
         if len(devices) == 1:
-            device = devices[0]
+            serial = devices.keys()[0]
         # otherwise, let user decide
-        while not device in devices:
-            device = utils.ChooserForm("Choose device", devices).choose()
-        if self.adb_device != device:
-            self.adb_device = device
+        while not serial in devices:
+            serial, _ = utils.ChooserForm("Choose device", devices.values(), values=devices.keys()).choose()
 
-        if cache and device == cache.dev:
-            return cache
-        return Device(device, self._getPackageApk())
+        if cache is not None and serial == cache.serial:
+            self.adb_device = cache
+        else:
+            self.adb_device = Device(serial, devices[serial])
+            self.adb_device.setPackages(self._getPackageApk())
+        return self.adb_device
 
     def _getPackageApk(self):
         ret = {}

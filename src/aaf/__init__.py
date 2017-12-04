@@ -52,36 +52,38 @@ class AndroidAttacher(object):
 
     @fn_timer
     def _getPid(self, with_service=True):
-        names = []
-        pids = {}
+        pids = []
+        processes = []
         ps = self.adb.call(['shell', 'ps']).splitlines()
         for x in ps:
             xs = x.split()
             if 'S' in xs or 'T' in xs:
-                for token in xs:
-                    if (with_service and token.startswith(self.packageName)) or self.packageName == token:
+                for process in xs:
+                    if (with_service and process.startswith(self.packageName)) or self.packageName == process:
                         g = (col for col in xs if col.isdigit())
-                        pids[token] = int(next(g))
-                        names.append(token)
+                        pids.append(int(next(g)))
+                        processes.append(process)
                         break
 
         # print "getPid %s, with_service=%s" % (names, with_service)
-        if len(names) == 0:
+        if len(pids) == 0:
             return None, None
-        if len(names) == 1 and names[0] == self.packageName:
-            return pids[self.packageName], self.packageName
+        if len(processes) == 1 and processes[0] == self.packageName:
+            return pids[0], self.packageName
 
-        if self.debugProcessName is not None and self.debugProcessName in names:
-            return pids[self.debugProcessName], self.debugProcessName
+        if self.debugProcessName is not None:
+            for i, process in enumerate(processes):
+                if self.debugProcessName == process:
+                    return pids[i], process
 
-        process = utils.ChooserForm("Choose process", names).choose()
-        if process not in names:
+        pid, process = utils.ChooserForm("Choose process", processes, values=pids, cancel="Refresh").choose()
+        if pid is None:
             return None, None
 
         if self.debugProcessName != process:
             self.debugProcessName = process
 
-        return pids[process], process
+        return pid, process
 
     @fn_timer
     def _launch(self, debug):
@@ -102,10 +104,10 @@ class AndroidAttacher(object):
         (threading.Thread(target=watchdog)).start()
 
         for _ in range(50):
-            time.sleep(0.2)
             pid, _ = self._getPid(with_service=False)
             if pid is not None:
                 break
+            time.sleep(0.2)
         print "Done in %s seconds" % (time.time() - start)
 
     @fn_timer
@@ -135,12 +137,6 @@ class AndroidAttacher(object):
             print 'Attaching process %s[%s]... Failed: %s' % (process, pid, status)
 
     def _chooseLaunchActivity(self, packageName):
-        '''
-        packageApk = self.device.getApkPath(packageName)
-        if not packageApk:
-          raise StandardError("Error find package apk: %s." % packageName)
-        '''
-
         aaf_utils = "/data/local/tmp/aaf_utils.jar"
         # print "Pushing utils.jar to device: %s" % aaf_utils
         self.adb.push(self.utilsJar, aaf_utils)
@@ -155,7 +151,8 @@ class AndroidAttacher(object):
         activities = utils.decode_list(resp["activities"])
         if len(activities) == 1:
             return activities[0]
-        return utils.ChooserForm("Choose activity", activities).choose()
+        activity, _ = utils.ChooserForm("Choose activity", activities).choose()
+        return activity
 
     @fn_timer
     def _startAndroidServer(self, idaDebugPort):
