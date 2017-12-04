@@ -11,6 +11,8 @@ import time
 import idc
 
 from aaf import utils
+from aaf.debug import ResumeDebugHook
+from aaf.debug import JDWP_PORT
 from aaf.utils import fn_timer
 
 
@@ -114,25 +116,33 @@ class AndroidAttacher(object):
     def _attach(self, debug):
         pid, process = self._getPid(with_service=True)
         if pid:
-            self.attach_app(pid, process)
+            self.attach_app(pid, process, debug)
             return
 
         for _ in range(10):
             self._launch(debug)
             pid, process = self._getPid(with_service=True)
             if pid:
-                self.attach_app(pid, process)
+                self.attach_app(pid, process, debug)
                 return
 
         raise StandardError("Error attach %s/%s." % (self.packageName, self.launchActivity))
 
     @fn_timer
-    def attach_app(self, pid, process):
-        idc.LoadDebugger("armlinux", 1)
+    def attach_app(self, pid, process, debug):
+        idc.LoadDebugger("armlinux", use_remote=1)
         idc.SetRemoteDebugger("localhost", "", self.port)
         status = idc.AttachProcess(pid, -1)
         if status == 1:
             print 'Attaching process %s[%s]... Done' % (process, pid)
+
+            if debug:
+                try:
+                    self.adb.forward('tcp:' + str(JDWP_PORT) , 'jdwp:' + str(pid))
+                    self.dbg_hook = ResumeDebugHook()
+                    self.dbg_hook.hook()
+                except BaseException, e:
+                    print e
         else:
             print 'Attaching process %s[%s]... Failed: %s' % (process, pid, status)
 
