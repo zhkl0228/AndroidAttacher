@@ -12,13 +12,13 @@ CALC_EXEC_TIME = False
 
 
 class ChooserForm(Form):
-    def __init__(self, title, labels, values=None, cancel="Cancel"):
+    def __init__(self, title, labels, values=None, cancel="Cancel", index=0):
         Form.__init__(self, ("STARTITEM 0\n"
                              "BUTTON YES* OK\n"
                              "BUTTON CANCEL " + cancel + "\n" + title + "\n"
                                                                 "\n"
                                                                 "<Please select :{values}>\n"),
-                      {"values": Form.DropdownListControl(items=labels, readonly=True, selval=0)})
+                      {"values": Form.DropdownListControl(items=labels, readonly=True, selval=index)})
         self.labels = labels
         self.cvs = values if values is not None else labels
 
@@ -66,7 +66,7 @@ class AttachView(Form):
 
 
 def isWindows():
-    return "Windows" in platform.system()
+    return "windows" in platform.system().lower()
 
 
 def processWindows(**kw):

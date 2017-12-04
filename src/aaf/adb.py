@@ -54,10 +54,11 @@ class AdbWrapper(object):
 
         try:
             import psutil
-            for p in psutil.process_iter():
+            for process in psutil.process_iter():
                 try:
-                    if "tcp:5037" in p.cmdline():
-                        adb_path = p.exe()
+                    cmdline = process.cmdline()
+                    if len(cmdline) > 0 and cmdline[0] == "adb" and "fork-server" in cmdline:
+                        adb_path = process.exe()
                         if checkAdb(adb_path):
                             self.adb_path = adb_path
                             return
