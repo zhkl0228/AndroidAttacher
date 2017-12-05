@@ -65,7 +65,6 @@ class JDWPClient(object):
             raise Exception("JDWP: Failed to connect: %s" % msg)
 
         self.socket.sendall( HANDSHAKE )
-
         if self.recvall(len(HANDSHAKE)) != HANDSHAKE:
             raise Exception("JDWP: Failed to handshake")
 
@@ -89,9 +88,9 @@ class JDWPClient(object):
                     data[name] = int(struct.unpack(">I", buf[index:index+4])[0])
                     index += 4
                 elif fmt == 'S':
-                    l = struct.unpack(">I", buf[index:index+4])[0]
-                    data[name] = buf[index+4:index+4+l]
-                    index += 4 + l
+                    len = struct.unpack(">I", buf[index:index+4])[0]
+                    data[name] = buf[index+4:index+4+len]
+                    index += 4 + len
                 elif fmt == 'C':
                     data[name] = ord(struct.unpack(">c", buf[index])[0])
                     index += 1
@@ -116,7 +115,7 @@ class JDWPClient(object):
 
     @property
     def version(self):
-        return "%s - %s" % (self.vmName, self.vmVersion)
+        return "%s-%s" % (self.vmName, self.vmVersion)
 
     def resumevm(self):
         self.socket.sendall( self.create_packet( RESUMEVM_SIG ) )

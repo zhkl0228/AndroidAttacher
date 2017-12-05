@@ -41,7 +41,7 @@ class ResumeDebugHook(idaapi.DBG_Hooks):
         try:
             jdwp.start()
             jdwp.resumevm()
-            print "Try resume jdwp: %s" % jdwp.version
+            print "Resume jdwp: %s" % jdwp.version
             time.sleep(5)
         except:
             pass
