@@ -8,7 +8,7 @@ import threading
 
 from jdwp import JDWPClient
 
-JDWP_PORT=8700
+JDWP_PORT=18700
 
 
 class ResumeDebugHook(idaapi.DBG_Hooks):
@@ -43,7 +43,7 @@ class ResumeDebugHook(idaapi.DBG_Hooks):
             jdwp.resumevm()
             print "Try resume jdwp: %s" % jdwp.version
             time.sleep(5)
-        except BaseException, e:
+        except:
             pass
         finally:
             jdwp.leave()
