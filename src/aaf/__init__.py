@@ -20,6 +20,7 @@ class AndroidAttacher(object):
     def __init__(self, wrapper, utilsJar, config_file):
         self.packageName = None
         self.launchActivity = None
+        self.launchAppLabel = None
         self.android_server = None
         self.device = None
         self.adb = wrapper
@@ -156,13 +157,14 @@ class AndroidAttacher(object):
         if resp["code"] != 0:
             raise StandardError(resp["msg"])
         main = utils.decode_list(resp["main"])
+        label = resp["label"] if "label" in resp else None
         if len(main) == 1:
-            return main[0]
+            return main[0], label
         activities = utils.decode_list(resp["activities"])
         if len(activities) == 1:
-            return activities[0]
-        activity, _ = utils.ChooserForm("Choose activity", activities).choose()
-        return activity
+            return activities[0], label
+        activity, _ = utils.ChooserForm("Choose " + label if label is not None else packageName + " activity", activities).choose()
+        return activity, label
 
     @fn_timer
     def _startAndroidServer(self, idaDebugPort):
@@ -334,14 +336,14 @@ class AndroidAttacher(object):
             self.save_config({"packageName": packageName, "idaDebugPort": idaDebugPort, "debug": debug})
 
             if self.launchActivity is None or self.packageName != packageName:
-                self.launchActivity = self._chooseLaunchActivity(packageName)
+                self.launchActivity, self.launchAppLabel = self._chooseLaunchActivity(packageName)
 
             self.packageName = packageName
 
             if not self.launchActivity:
                 return
 
-            print "Request attach: %s with arg %s" % (packageName, arg)
+            print "Request attach: %s with arg %s" % (self.launchAppLabel if self.launchAppLabel is not None else packageName, arg)
 
             if is_running:
                 self._attach(debug)
@@ -356,4 +358,3 @@ class AndroidAttacher(object):
                 self.android_server = None
 
             print e
-            # raise

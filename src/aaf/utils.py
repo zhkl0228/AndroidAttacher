@@ -26,7 +26,8 @@ class ChooserForm(Form):
         self.Compile()
         if self.Execute() != 1:
             return None, None
-        return self.cvs[self.values.value], self.labels[self.values.value]
+        selected = self.values.value
+        return self.cvs[selected], self.labels[selected]
 
     def OnButtonNop(self, code=0):
         pass
